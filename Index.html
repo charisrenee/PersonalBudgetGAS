@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<style>
+  :root {
+    --bg: #f4f3ef; --card: #fff; --ink: #1f2421; --muted: #8a8f8b; --line: #ecebe6;
+    --accent: #2f7d5b; --good: #2f7d5b; --bad: #c4473a; --radius: 16px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  main { max-width: 560px; margin: auto; padding: 16px 16px 120px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px #0000000d; }
+  h2 { font-size: 1rem; margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  h2 small { font-weight: 400; color: var(--muted); }
+  .muted { color: var(--muted); font-size: .85em; }
+  .lbl { color: var(--muted); font-size: .8em; margin-top: 12px; }
+  .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 0; border-top: 1px solid var(--line); }
+  .tap { cursor: pointer; }
+  .split { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; text-align: center; margin-top: 14px; }
+  .stat { background: var(--bg); border-radius: 10px; padding: 8px; }
+  .stat b { display: block; font-size: 1.1em; margin: 2px 0; }
+  .big { font-size: 2.2em; font-weight: 700; }
+  .track { height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; margin: 6px 0 4px; }
+  .fill { height: 100%; background: var(--accent); }
+  .over .fill { background: var(--bad); }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .tag { font-size: .7em; background: var(--line); color: var(--muted); padding: 2px 6px; border-radius: 6px; margin-left: 6px; }
+  .nest { margin: 8px 0 0 6px; padding-left: 10px; border-left: 2px solid var(--line); }
+  .sub { display: flex; justify-content: space-between; font-size: .9em; padding: 3px 0; color: var(--muted); }
+  button { font: inherit; border: none; border-radius: 10px; padding: 10px 14px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+  button.ghost { background: none; color: var(--accent); padding: 6px 8px; }
+  button.danger { background: none; color: var(--bad); }
+  button.pill { font-size: .8em; padding: 6px 12px; border-radius: 99px; }
+  input, select { font: inherit; width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px; margin-top: 8px; background: #fff; color: var(--ink); }
+  input:disabled { background: var(--bg); }
+  label.check { display: flex; gap: 8px; align-items: center; margin-top: 12px; font-size: .9em; }
+  label.check input { width: auto; margin: 0; }
+  nav.month { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  nav.month b { font-size: 1.1em; }
+  nav.month button { font-size: 1.5em; }
+  nav.tabs { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); display: flex;
+             border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
+  nav.tabs button { flex: 1; background: none; color: var(--muted); border-radius: 0; padding: 16px 2px; font-size: .85em; }
+  nav.tabs button.on { color: var(--accent); }
+  .fab { position: fixed; right: 20px; bottom: 80px; width: 58px; height: 58px; border-radius: 50%;
+         font-size: 1.8em; padding: 0; box-shadow: 0 4px 14px #0003; }
+  dialog { border: none; border-radius: var(--radius); padding: 20px; width: min(92vw, 420px); max-height: 90vh; overflow-y: auto; }
+  dialog::backdrop { background: #0006; }
+  .seg { display: flex; gap: 6px; margin-top: 8px; }
+  .seg button { flex: 1; background: var(--line); color: var(--ink); padding: 10px 4px; font-size: .9em; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .actions { display: flex; gap: 8px; margin-top: 16px; }
+  .actions button { flex: 1; }
+  .bars { display: flex; align-items: stretch; gap: 3px; height: 130px; margin-top: 8px; }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; font-size: .6em; color: var(--muted); min-width: 0; }
+  .bar-slot { flex: 1; width: 100%; display: flex; align-items: flex-end; }
+  .bar-v { width: 100%; background: var(--accent); border-radius: 4px 4px 0 0; min-height: 2px; }
+  .bar-v.neg-bg { background: var(--bad); }
+  .bar-v.future { opacity: .4; }
+  #toast { position: fixed; left: 16px; bottom: 84px; max-width: calc(100% - 110px); background: var(--ink); color: #fff;
+           border-radius: 12px; padding: 8px 8px 8px 16px; display: none; align-items: center; gap: 10px;
+           box-shadow: 0 4px 14px #0004; z-index: 10; font-size: .9em; }
+  #toast button { color: #8fe0b8; }
+  #loading { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: var(--accent); display: none; z-index: 11; }
+</style>
+</head>
+<body>
+  <div id="loading"></div>
+  <main>
+    <nav class="month" id="monthNav">
+      <button class="ghost" onclick="shift(-1)">‹</button><b id="monthLabel">Loading…</b><button class="ghost" onclick="shift(1)">›</button>
+    </nav>
+    <div id="page"></div>
+  </main>
+  <div id="toast"><span id="toastMsg"></span><button class="ghost" id="toastBtn">Undo</button></div>
+  <button class="fab" id="fab" onclick="openTx()">+</button>
+  <nav class="tabs">
+    <button data-p="month" onclick="go('month')">Month</button>
+    <button data-p="budget" onclick="go('budget')">Budget</button>
+    <button data-p="goals" onclick="go('goals')">Goals</button>
+    <button data-p="money" onclick="go('money')">Money</button>
+    <button data-p="history" onclick="go('history')">History</button>
+  </nav>
+  <dialog id="dlg"></dialog>
+
+<script>
+  const BTYPES = ['Income', 'Fixed', 'Flex', 'Unplanned', 'Savings'];
+  const SPEND_TYPES = ['Fixed', 'Flex', 'Unplanned'];
+  const LABEL = { Income: 'Income', Fixed: 'Fixed expenses', Flex: 'Flexible spending', Unplanned: 'Unplanned buffer', Savings: 'Savings goals' };
+  const KIND = { Income: 'Income', Fixed: 'Fixed', Flex: 'Flex', Unplanned: 'Unplanned', Savings: 'To goal',
+                 GoalSpend: 'Paid from goal', Transfer: 'Transfer', Adjust: 'Balance update' };
+  const TX_KINDS = [
+    ['Flex', 'Flexible spending'], ['Fixed', 'Fixed expense'], ['Income', 'Income'],
+    ['Unplanned', 'Unplanned cost or bonus'], ['Refund', 'Refund or return'],
+    ['Transfer', 'Transfer or card payment'],
+    ['Savings', 'Add to a savings goal'], ['GoalSpend', 'Spend from a savings goal']
+  ];
+  const ACCT_KINDS = ['Checking', 'Savings', 'Cash', 'Credit card', 'Investment', 'Loan', 'Other asset'];
+  const LIAB = ['Credit card', 'Loan'];
+
+  let D = { budget: [], goals: [], accounts: [], tx: [], today: '' }, M = '', page = 'month', QA = [], fcN = 12;
+  let txType = 'Flex', txDir = 'Out', lastSugg = 0, lastAcct = '', editId = null, toastTimer = null;
+
+  // ---------- small helpers ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = n => (n < 0 ? '-' : '') + '$' + Math.abs(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const sum = (a, f) => a.reduce((s, x) => s + f(x), 0);
+  const ym = m => m.split('-').map(Number);
+  const monthName = m => { const [y, mo] = ym(m); return new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }); };
+  const shortMonth = m => { const [y, mo] = ym(m); return new Date(y, mo - 1, 1).toLocaleDateString(undefined, { month: 'short' }); };
+  const addMonths = (m, n) => { const [y, mo] = ym(m); const d = new Date(y, mo - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
+  const monthsBetween = (a, b) => { const [ya, ma] = ym(a), [yb, mb] = ym(b); return (yb - ya) * 12 + (mb - ma); };
+  const cur = () => D.today.slice(0, 7);
+  const defaultDate = () => cur() === M ? D.today : M + '-01';
+  const validMonth = m => /^\d{4}-\d{2}$/.test(m);
+  const closeDlg = () => { if ($('dlg').open) $('dlg').close(); };
+
+  // ---------- accounts helpers ----------
+  const isLiab = a => !!a && LIAB.includes(a.kind);
+  const activeAccts = () => D.accounts.filter(a => a.status === 'Active');
+  const acctByName = n => D.accounts.find(a => a.name === n);
+  const defAcct = () => { const a = activeAccts().find(a => !isLiab(a)) || activeAccts()[0]; return a ? a.name : ''; };
+  const acctOf = t => t.account || defAcct();
+  const goalAcct = g => g.account || (activeAccts().find(a => a.kind === 'Savings') || {}).name || defAcct();
+
+  function acctSelect(id, sel, filter, blankLabel) {
+    const list = activeAccts().filter(filter || (() => true));
+    if (sel && !list.some(a => a.name === sel) && acctByName(sel)) list.push(acctByName(sel));
+    const blank = blankLabel ? `<option value="">${blankLabel}</option>` : '';
+    return `<select id="${id}">${blank}${list.map(a => `<option ${a.name === sel ? 'selected' : ''}>${esc(a.name)}</option>`).join('')
+      || (blankLabel ? '' : '<option value="">Add an account on the Money page</option>')}</select>`;
+  }
+
+  // How a transaction moves account balances: [[accountName, +/-amount], ...]
+  function effects(t) {
+    const a = acctOf(t);
+    if (t.type === 'Transfer') return [[a, -t.amount], [t.to, t.amount]];
+    if (t.type === 'Savings') return [];                 // goal contributions are labels only
+    if (t.type === 'GoalSpend') return [[a, -t.amount]];
+    if (t.direction === 'In' || t.direction === 'Refund') return [[a, t.amount]];
+    if (t.direction === 'Out') return [[a, -t.amount]];
+    return [];
+  }
+
+  // Account values (debts negative) as of a date (inclusive). No date = now.
+  function balances(upTo) {
+    const b = {}, start = {};
+    D.accounts.forEach(a => {
+      if (!upTo || a.date <= upTo) { b[a.name] = isLiab(a) ? -a.start : a.start; start[a.name] = a.date; }
+    });
+    D.tx.forEach(t => {
+      if (upTo && t.date > upTo) return;
+      effects(t).forEach(([n, d]) => { if (n in b && t.date >= start[n]) b[n] += d; });
+    });
+    return b;
+  }
+  const netWorth = b => sum(Object.values(b), v => v);
+
+  // ---------- server calls + undo ----------
+  function call(fn, ...args) {
+    $('loading').style.display = 'block';
+    return new Promise((res, rej) => google.script.run
+      .withSuccessHandler(d => { $('loading').style.display = 'none'; res(d); })
+      .withFailureHandler(e => { $('loading').style.display = 'none'; alert('Error: ' + e.message); rej(e); })[fn](...args));
+  }
+  async function sync(fn, ...args) {
+    try { D = await call(fn, ...args); render(); return true; } catch (e) { return false; }
+  }
+
+  function toast(msg, undo) {
+    $('toastMsg').textContent = msg;
+    $('toastBtn').style.display = undo ? 'inline-block' : 'none';
+    $('toastBtn').onclick = () => { hideToast(); undo(); };
+    $('toast').style.display = 'flex';
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, 8000);
+  }
+  function hideToast() { $('toast').style.display = 'none'; }
+
+  async function addWithUndo(t, msg, remember) {
+    if (await sync('addTx', t, !!remember)) {
+      const id = D.lastId;
+      toast(msg, async () => { if (await sync('deleteTx', id)) toast('Undone'); });
+    }
+  }
+  async function updWithUndo(id, t) {
+    const old = Object.assign({}, D.tx.find(x => x.id === id));
+    if (await sync('updateTx', id, t)) toast('Transaction updated', async () => { if (await sync('updateTx', id, old)) toast('Undone'); });
+  }
+  async function delTx(id) {
+    const old = Object.assign({}, D.tx.find(x => x.id === id));
+    closeDlg();
+    if (await sync('deleteTx', id)) toast('Transaction deleted', async () => { if (await sync('restoreTx', old)) toast('Restored'); });
+  }
+
+  // ---------- budget model ----------
+  function carries(b, m) {
+    if (b.repeat === 'Once') return false;
+    if (b.type === 'Savings') {
+      const g = D.goals.find(g => g.name === b.name);
+      return !!g && g.status === 'Active' && m <= g.due;
+    }
+    return true;
+  }
+
+  function planFor(m) {
+    const own = D.budget.filter(b => b.month === m);
+    if (own.length) return { items: own, inherited: false };
+    const prev = [...new Set(D.budget.map(b => b.month))].filter(x => x < m).sort().pop();
+    return { items: prev ? D.budget.filter(b => b.month === prev && carries(b, m)) : [], inherited: !!prev, from: prev };
+  }
+
+  function summarize(m) {
+    const plan = planFor(m).items, tx = D.tx.filter(t => t.date.slice(0, 7) === m);
+    const pt = type => sum(plan.filter(p => p.type === type), p => p.amount);
+    const inc = sum(tx.filter(t => (t.type === 'Income' || t.type === 'Unplanned') && t.direction === 'In'), t => t.amount);
+    const out = sum(tx.filter(t => SPEND_TYPES.includes(t.type) && t.direction === 'Out'), t => t.amount);
+    const refunds = sum(tx.filter(t => t.direction === 'Refund'), t => t.amount);
+    const saved = sum(tx.filter(t => t.type === 'Savings' && t.direction === 'Out'), t => t.amount);
+    const fromGoals = sum(tx.filter(t => t.type === 'GoalSpend'), t => t.amount);
+    const spent = out - refunds;
+    return { plan, tx, inc, spent, saved, fromGoals, left: inc - spent - saved,
+      plannedIn: pt('Income'), plannedSpend: pt('Fixed') + pt('Flex') + pt('Unplanned'), plannedSave: pt('Savings') };
+  }
+
+  // Budget lines of a type + categories that only appear in transactions. Refunds subtract.
+  function lines(type, plan, tx) {
+    const own = tx.filter(t => t.type === type && t.direction !== 'Pot');
+    const ls = plan.filter(p => p.type === type).map(p => ({ name: p.name, planned: p.amount, account: p.account || '' }));
+    own.forEach(t => { if (!ls.some(l => l.name === t.category)) ls.push({ name: t.category, planned: 0, account: '' }); });
+    ls.forEach(l => {
+      l.txs = own.filter(t => t.category === l.name);
+      l.actual = sum(l.txs, t => t.direction === 'Refund' ? -t.amount : t.amount);
+    });
+    return ls;
+  }
+
+  // Projected totals: current month = max(plan, actual) per line; future = plan
+  function project(m) {
+    const s = summarize(m);
+    if (m > cur()) return { inc: s.plannedIn, spend: s.plannedSpend, save: s.plannedSave };
+    const mx = type => sum(lines(type, s.plan, s.tx), l => Math.max(l.planned, l.actual));
+    const un = s.tx.filter(t => t.type === 'Unplanned');
+    const unCost = sum(un.filter(t => t.direction === 'Out'), t => t.amount);
+    const unIn = sum(un.filter(t => t.direction === 'In'), t => t.amount);
+    const buffer = sum(s.plan.filter(p => p.type === 'Unplanned'), p => p.amount);
+    return { inc: mx('Income') + unIn, spend: mx('Fixed') + mx('Flex') + Math.max(buffer, unCost), save: mx('Savings') };
+  }
+
+  function goalBal(name) {
+    return sum(D.tx.filter(t => t.category === name && (t.type === 'Savings' || t.type === 'GoalSpend')),
+      t => t.type === 'Savings' ? t.amount : -t.amount);
+  }
+
+  function goalStats(g) {
+    const c = cur(), bal = goalBal(g.name), months = [];
+    for (let m = c; m <= g.due; m = addMonths(m, 1)) months.push(m);
+    const planned = m => sum(planFor(m).items.filter(p => p.type === 'Savings' && p.name === g.name), p => p.amount);
+    const doneNow = sum(D.tx.filter(t => t.type === 'Savings' && t.direction === 'Out' && t.category === g.name && t.date.slice(0, 7) === c), t => t.amount);
+    const projected = bal + sum(months, m => m === c ? Math.max(0, planned(m) - doneNow) : planned(m));
+    const monthsLeft = Math.max(1, months.length - (doneNow > 0 ? 1 : 0));
+    return { bal, monthly: planned(c), projected, overdue: g.due < c,
+             suggested: Math.max(0, Math.ceil((g.target - bal) / monthsLeft)) };
+  }
+
+  // ---------- navigation ----------
+  function shift(n) { M = addMonths(M, n); render(); }
+  function go(p) { page = p; render(); window.scrollTo(0, 0); }
+
+  function render() {
+    QA = [];
+    $('monthNav').style.display = (page === 'month' || page === 'budget') ? 'flex' : 'none';
+    $('monthLabel').textContent = monthName(M);
+    $('fab').style.display = (page === 'month' || page === 'money') ? 'block' : 'none';
+    document.querySelectorAll('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.p === page));
+    const pages = { month: monthPage, budget: budgetPage, goals: goalsPage, money: moneyPage, history: historyPage };
+    $('page').innerHTML = pages[page]();
+  }
+
+  // ---------- page: month ----------
+  function monthPage() {
+    const s = summarize(M), { plan, tx } = s;
+    const flex = lines('Flex', plan, tx);
+    const flexLeft = sum(flex, l => l.planned - l.actual);
+
+    let h = `<div class="card">
+      <div class="muted">Flexible spending left</div>
+      <div class="big ${flexLeft < 0 ? 'neg' : ''}">${money(flexLeft)}</div>
+      <div class="stats">
+        <div class="stat"><span class="muted">Income</span><b>${money(s.inc)}</b><span class="muted">of ${money(s.plannedIn)}</span></div>
+        <div class="stat"><span class="muted">Spent</span><b>${money(s.spent)}</b><span class="muted">of ${money(s.plannedSpend)}</span></div>
+        <div class="stat"><span class="muted">To goals</span><b>${money(s.saved)}</b><span class="muted">of ${money(s.plannedSave)}</span></div>
+        <div class="stat"><span class="muted">Left over</span><b class="${s.left < 0 ? 'neg' : 'pos'}">${money(s.left)}</b><span class="muted">so far</span></div>
+      </div>
+      ${s.fromGoals ? `<div class="muted" style="margin-top:10px">Also paid ${money(s.fromGoals)} from savings goals.</div>` : ''}
+    </div>`;
+
+    // Checklists: income, fixed, savings
+    const txt = {
+      Income:  { go: 'Received', rest: 'Receive rest', done: 'Received' },
+      Fixed:   { go: 'Mark paid', rest: 'Pay rest', done: 'Paid' },
+      Savings: { go: 'Mark saved', rest: 'Save rest', done: 'Saved' }
+    };
+    for (const type of ['Income', 'Fixed', 'Savings']) {
+      const ls = lines(type, plan, tx);
+      if (!ls.length) continue;
+      h += `<div class="card"><h2>${LABEL[type]}<small>${money(sum(ls, l => l.actual))} of ${money(sum(ls, l => l.planned))}</small></h2>`;
+      ls.forEach(l => {
+        const latest = [...l.txs].sort((a, b) => b.date.localeCompare(a.date))[0];
+        const used = [...new Set(l.txs.map(acctOf))].join(', ');
+        const acctNote = type === 'Savings' ? '' : used ? ' · ' + esc(used) : l.account ? ' · usually ' + esc(l.account) : '';
+        let btn;
+        if (l.actual >= l.planned) {
+          btn = latest ? `<button class="ghost" onclick="editTx('${latest.id}')">✓ ${txt[type].done}</button>` : `<span class="muted">${txt[type].done}</span>`;
+        } else {
+          const i = QA.push({ type, name: l.name, amount: l.planned - l.actual, planned: l.planned, account: l.account }) - 1;
+          btn = `<span style="white-space:nowrap">${latest ? `<button class="ghost" onclick="editTx('${latest.id}')">✓</button>` : ''}
+            <button class="pill" onclick="${type === 'Savings' ? 'quickSave' : 'payLine'}(${i})">${l.actual > 0 ? txt[type].rest : txt[type].go}</button></span>`;
+        }
+        h += `<div class="row"><div>${esc(l.name)}<div class="muted">${money(l.actual)} of ${money(l.planned)}${acctNote}</div></div>${btn}</div>`;
+      });
+      h += '</div>';
+    }
+
+    // Flex with progress bars
+    h += `<div class="card"><h2>${LABEL.Flex}<small>${money(sum(flex, l => l.actual))} of ${money(sum(flex, l => l.planned))}</small></h2>`;
+    flex.forEach(l => {
+      const left = l.planned - l.actual;
+      const pct = l.planned ? Math.min(100, Math.max(0, l.actual / l.planned * 100)) : 100;
+      h += `<div class="row" style="display:block">
+        <div class="split"><span>${esc(l.name)}</span>
+          <span class="${left < 0 ? 'neg' : ''}">${money(Math.abs(left))} ${left < 0 ? 'over' : 'left'}</span></div>
+        <div class="track ${left < 0 ? 'over' : ''}"><div class="fill" style="width:${pct}%"></div></div>
+        <div class="muted">${money(l.actual)} of ${money(l.planned)}</div></div>`;
+    });
+    if (!flex.length) h += '<div class="muted">No flexible categories in this month\'s budget.</div>';
+    h += '</div>';
+
+    // Unplanned
+    const un = tx.filter(t => t.type === 'Unplanned');
+    const buffer = sum(plan.filter(p => p.type === 'Unplanned'), p => p.amount);
+    const unCost = sum(un.filter(t => t.direction === 'Out'), t => t.amount);
+    const unIn = sum(un.filter(t => t.direction === 'In'), t => t.amount);
+    h += `<div class="card"><h2>Unplanned<small>buffer left ${money(buffer - unCost)}</small></h2>
+      <div class="muted">Costs ${money(unCost)} · Bonuses ${money(unIn)} · Buffer ${money(buffer)}</div>`;
+    un.forEach(t => h += `<div class="row tap" onclick="editTx('${t.id}')"><span>${esc(t.category)}</span>
+      <span class="${t.direction === 'In' ? 'pos' : 'neg'}">${t.direction === 'In' ? '+' : '−'}${money(t.amount)}</span></div>`);
+    h += '</div>';
+
+    // Transactions
+    const sorted = [...tx].sort((a, b) => b.date.localeCompare(a.date));
+    h += `<div class="card"><h2>Transactions<small>tap to edit</small></h2>` +
+      (sorted.map(t => {
+        const kind = t.direction === 'Refund' ? 'Refund' : (KIND[t.type] || esc(t.type));
+        const acct = t.type === 'Transfer' ? `${esc(acctOf(t))} → ${esc(t.to)}` : t.type === 'Savings' ? '' : esc(acctOf(t));
+        const plus = t.direction === 'In' || t.direction === 'Refund';
+        const cls = plus ? 'pos' : (t.direction === 'Move' || t.direction === 'Pot') ? 'muted' : '';
+        return `<div class="row tap" onclick="editTx('${t.id}')">
+          <div>${esc(t.category)}<div class="muted">${t.date.slice(5)} · ${kind}${acct ? ' · ' + acct : ''}${t.note ? ' · ' + esc(t.note) : ''}${t.by ? ' · ' + esc(t.by) : ''}</div></div>
+          <div style="white-space:nowrap"><span class="${cls}">${plus ? '+' : ''}${money(t.amount)}</span>
+          <button class="ghost danger" onclick="event.stopPropagation();delTx('${t.id}')">✕</button></div></div>`;
+      }).join('') || '<div class="muted">Nothing logged yet.</div>') + '</div>';
+    return h;
+  }
+
+  // Confirm screen for "Mark paid" / "Received"
+  function payLine(i) {
+    const q = QA[i], isInc = q.type === 'Income';
+    $('dlg').innerHTML = `<h2>${isInc ? 'Received' : 'Pay'} — ${esc(q.name)}</h2>
+      <input id="qAmt" type="number" step="0.01" inputmode="decimal" value="${q.amount.toFixed(2)}">
+      <div class="lbl">${isInc ? 'Went into' : 'Paid from'}</div>
+      ${acctSelect('qAcct', q.account || defAcct())}
+      <input id="qDate" type="date" value="${defaultDate()}">
+      ${q.planned ? `<label class="check"><input type="checkbox" id="qRem" ${q.account ? '' : 'checked'}> Use this account for ${esc(q.name)} from now on</label>` : ''}
+      <div class="actions"><button class="ghost" onclick="$('dlg').close()">Cancel</button><button onclick="savePayLine(${i})">Save</button></div>`;
+    $('dlg').showModal();
+  }
+  function savePayLine(i) {
+    const q = QA[i], isInc = q.type === 'Income';
+    const amount = Math.abs(parseFloat($('qAmt').value));
+    if (!amount) return alert('Enter an amount');
+    const account = $('qAcct').value;
+    const remember = $('qRem') && $('qRem').checked && account !== q.account;
+    const t = { type: q.type, category: q.name, direction: isInc ? 'In' : 'Out', amount, date: $('qDate').value || defaultDate(), note: '', account };
+    $('dlg').close();
+    addWithUndo(t, `${isInc ? 'Received' : 'Paid'} ${q.name}`, remember);
+  }
+  function quickSave(i) {
+    const q = QA[i];
+    addWithUndo({ type: 'Savings', category: q.name, direction: 'Out', amount: q.amount, date: defaultDate(), note: '', account: '' }, `Saved to ${q.name}`);
+  }
+
+  // ---------- page: budget ----------
+  function budgetPage() {
+    const p = planFor(M), editable = !p.inherited;
+    const tot = t => sum(p.items.filter(i => i.type === t), i => i.amount);
+    const left = tot('Income') - tot('Fixed') - tot('Flex') - tot('Unplanned') - tot('Savings');
+    let h = '';
+    if (p.inherited) h += `<div class="card"><div class="muted">This month is using the budget carried from ${monthName(p.from)}.</div>
+      <button style="margin-top:10px;width:100%" onclick="sync('ensurePlan', M)">Customize ${monthName(M)}</button></div>`;
+    h += `<div class="card"><div class="muted">Income minus everything planned</div>
+      <div class="big ${left < 0 ? 'neg' : 'pos'}">${money(left)}</div>
+      <div class="muted">${left >= 0 ? 'Unassigned — extra savings, or give it a job' : 'You\'ve planned more than you earn'}</div></div>`;
+    BTYPES.forEach(t => {
+      const items = p.items.filter(i => i.type === t);
+      h += `<div class="card"><h2>${LABEL[t]}<small>${money(tot(t))}</small></h2>`;
+      items.forEach(i => h += `<div class="row${editable ? ' tap' : ''}"${editable ? ` onclick="editPlan('${i.id}')"` : ''}>
+        <span>${esc(i.name)}${i.repeat === 'Once' ? '<span class="tag">once</span>' : ''}${i.account ? `<div class="muted">${esc(i.account)}</div>` : ''}</span>
+        <span>${money(i.amount)}</span></div>`);
+      if (!items.length) h += `<div class="muted">${t === 'Savings' ? 'Create goals on the Goals page.' : 'None yet.'}</div>`;
+      if (editable && t !== 'Savings') h += `<button class="ghost" style="margin-top:6px" onclick="editPlan(null,'${t}')">+ Add</button>`;
+      h += '</div>';
+    });
+    return h;
+  }
+
+  function editPlan(id, type) {
+    const it = id ? D.budget.find(b => b.id === id) : { type, name: '', amount: '', repeat: 'Monthly', account: '' };
+    const isGoal = it.type === 'Savings';
+    const hasAcct = it.type === 'Income' || it.type === 'Fixed';
+    const later = D.budget.some(b => b.month > M);
+    $('dlg').innerHTML = `<h2>${id ? 'Edit' : 'Add'} — ${LABEL[it.type]}</h2>
+      <input id="pName" placeholder="Name (e.g. Rent)" value="${esc(it.name)}" ${isGoal ? 'disabled' : ''}>
+      <input id="pAmt" type="number" step="0.01" inputmode="decimal" placeholder="Amount" value="${esc(it.amount)}">
+      ${isGoal ? '' : `<select id="pRep">
+        <option value="Monthly">Repeats every month</option>
+        <option value="Once" ${it.repeat === 'Once' ? 'selected' : ''}>This month only</option></select>`}
+      ${hasAcct ? `<div class="lbl">${it.type === 'Income' ? 'Usually goes into' : 'Usually paid from'}</div>${acctSelect('pAcct', it.account, null, 'No default')}` : ''}
+      ${later ? '<label class="check"><input type="checkbox" id="pFwd" checked> Also update later months that already have budgets</label>' : ''}
+      <div class="actions">
+        ${id ? `<button class="danger" onclick="delPlan('${id}')">Delete</button>` : ''}
+        <button class="ghost" onclick="$('dlg').close()">Cancel</button>
+        <button onclick="savePlan('${id || ''}','${it.type}')">Save</button>
+      </div>`;
+    $('dlg').showModal();
+  }
+  function savePlan(id, type) {
+    const name = $('pName').value.trim();
+    if (!name) return alert('Give it a name');
+    const existing = id ? D.budget.find(b => b.id === id) : null;
+    const item = { id: id || null, month: M, type, name, amount: Number($('pAmt').value) || 0,
+                   repeat: $('pRep') ? $('pRep').value : 'Monthly',
+                   account: $('pAcct') ? $('pAcct').value : (existing ? existing.account : '') };
+    const fwd = $('pFwd') ? $('pFwd').checked : false;
+    $('dlg').close();
+    sync('savePlanItem', item, fwd);
+  }
+  function delPlan(id) {
+    if (!confirm('Remove this from the budget?')) return;
+    const fwd = $('pFwd') ? $('pFwd').checked : false;
+    $('dlg').close();
+    sync('deletePlanItem', id, fwd);
+  }
+
+  // ---------- page: goals ----------
+  function goalsPage() {
+    const active = D.goals.filter(g => g.status === 'Active'), done = D.goals.filter(g => g.status === 'Done');
+    let h = `<div class="card"><div class="muted">Set aside across all goals</div>
+      <div class="big">${money(sum(D.goals, g => goalBal(g.name)))}</div>
+      <button style="margin-top:12px;width:100%" onclick="editGoal(null)">+ New goal</button></div>`;
+    active.forEach(g => {
+      const s = goalStats(g), pct = g.target ? Math.min(100, Math.max(0, s.bal / g.target * 100)) : 0;
+      const status = s.bal >= g.target ? '<span class="pos">Fully funded</span>'
+        : s.overdue ? `<span class="neg">Target month passed — ${money(g.target - s.bal)} short</span>`
+        : s.projected >= g.target ? '<span class="pos">On track</span>'
+        : `<span class="neg">Short ${money(g.target - s.projected)} — try ${money(s.suggested)}/mo</span>`;
+      h += `<div class="card"><h2>${esc(g.name)}<small>by ${monthName(g.due)}</small></h2>
+        <div class="track"><div class="fill" style="width:${pct}%"></div></div>
+        <div class="split"><span>${money(s.bal)} of ${money(g.target)}</span><span class="muted">${money(s.monthly)}/mo</span></div>
+        <div class="muted" style="margin-top:4px">${status} · in ${esc(goalAcct(g))}</div>
+        <div class="actions">
+          <button class="ghost" onclick="editGoal('${g.id}')">Edit</button>
+          <button class="ghost" onclick="spendGoal('${g.id}')">Spend</button>
+          <button class="ghost" onclick="doneGoal('${g.id}')">Done</button>
+        </div></div>`;
+    });
+    if (!active.length) h += '<div class="card muted">No active goals yet. Goals are great for vacations, car repairs, holidays, or anything big you can see coming.</div>';
+    if (done.length) h += '<div class="card"><h2>Completed</h2>' + done.map(g => `<div class="row">
+        <div>${esc(g.name)}<div class="muted">${money(goalBal(g.name))} left in pot</div></div>
+        <button class="ghost" onclick="spendGoal('${g.id}')">Spend</button></div>`).join('') + '</div>';
+    return h;
+  }
+
+  function editGoal(id) {
+    const g = id ? D.goals.find(x => x.id === id) : null;
+    const s = g ? goalStats(g) : null;
+    const defA = g ? goalAcct(g) : ((activeAccts().find(a => a.kind === 'Savings') || {}).name || defAcct());
+    $('dlg').dataset.goal = id || '';
+    $('dlg').innerHTML = `<h2>${g ? 'Edit goal' : 'New savings goal'}</h2>
+      <input id="gName" placeholder="Goal (e.g. Summer vacation)" value="${esc(g ? g.name : '')}" ${g ? 'disabled' : ''}>
+      <input id="gTarget" type="number" step="0.01" inputmode="decimal" placeholder="Target amount" value="${g ? g.target : ''}" oninput="sugg()">
+      <div class="lbl">Need it by (month)</div>
+      <input id="gDue" type="month" placeholder="YYYY-MM" value="${g ? g.due : addMonths(cur(), 6)}" min="${cur()}" oninput="sugg()">
+      <div class="lbl">Money is kept in</div>
+      ${acctSelect('gAcct', defA, a => !isLiab(a))}
+      ${g ? '' : '<input id="gStart" type="number" step="0.01" inputmode="decimal" placeholder="Already saved (optional)" oninput="sugg()">'}
+      <input id="gMonthly" type="number" step="0.01" inputmode="decimal" placeholder="Monthly contribution" value="${s ? s.monthly : ''}">
+      <div class="muted" id="gSugg" style="margin-top:6px"></div>
+      <div class="actions"><button class="ghost" onclick="$('dlg').close()">Cancel</button><button onclick="saveGoalUI()">Save</button></div>`;
+    sugg();
+    $('dlg').showModal();
+  }
+  function sugg() {
+    const id = $('dlg').dataset.goal, g = id ? D.goals.find(x => x.id === id) : null;
+    const target = Number($('gTarget').value) || 0, due = $('gDue').value;
+    const have = g ? goalBal(g.name) : (Number($('gStart') && $('gStart').value) || 0);
+    if (!target || !validMonth(due) || due < cur()) { $('gSugg').textContent = 'Enter a target and a month from now on to see a suggestion.'; return; }
+    const n = monthsBetween(cur(), due) + 1;
+    lastSugg = Math.max(0, Math.ceil((target - have) / n));
+    $('gSugg').innerHTML = `Suggested: <b>${money(lastSugg)}/mo</b> for ${n} month${n > 1 ? 's' : ''}
+      <button class="ghost" onclick="$('gMonthly').value=lastSugg">Use</button>`;
+  }
+  function saveGoalUI() {
+    const id = $('dlg').dataset.goal;
+    const name = $('gName').value.trim(), target = Number($('gTarget').value) || 0, due = $('gDue').value;
+    if (!name || !target) return alert('Add a name and a target amount');
+    if (!validMonth(due) || due < cur()) return alert('Pick a target month (YYYY-MM) from this month on');
+    const g = { id: id || null, name, target, due, monthly: Number($('gMonthly').value) || 0, account: $('gAcct').value,
+                start: $('gStart') ? Number($('gStart').value) || 0 : 0, month: cur(), today: D.today };
+    $('dlg').close();
+    sync('saveGoal', g);
+  }
+  function spendGoal(id) {
+    const g = D.goals.find(x => x.id === id);
+    $('dlg').innerHTML = `<h2>Spend from ${esc(g.name)}</h2>
+      <div class="muted">${money(goalBal(g.name))} set aside</div>
+      <input id="sAmt" type="number" step="0.01" inputmode="decimal" placeholder="Amount">
+      <div class="lbl">Paid with</div>
+      ${acctSelect('sAcct', goalAcct(g))}
+      <input id="sDate" type="date" value="${D.today}">
+      <input id="sNote" placeholder="Note (e.g. Flights)">
+      <div class="actions"><button class="ghost" onclick="$('dlg').close()">Cancel</button><button onclick="saveSpend('${id}')">Save</button></div>`;
+    $('dlg').showModal();
+  }
+  function saveSpend(id) {
+    const g = D.goals.find(x => x.id === id), amount = Math.abs(parseFloat($('sAmt').value));
+    if (!amount) return alert('Enter an amount');
+    const t = { type: 'GoalSpend', category: g.name, direction: 'Pot', amount, account: $('sAcct').value,
+                date: $('sDate').value || D.today, note: $('sNote').value.trim() };
+    $('dlg').close();
+    addWithUndo(t, `Spent from ${g.name}`);
+  }
+  function doneGoal(id) {
+    if (confirm('Mark this goal as done? It will stop being added to future budgets. Any money left stays labeled to it.'))
+      sync('completeGoal', id, cur());
+  }
+
+  // ---------- page: money (net worth + accounts + forecast) ----------
+  function moneyPage() {
+    const c = cur(), bal = balances();
+    if (!D.accounts.length) return `<div class="card"><div class="muted">Add your accounts to track balances and net worth.</div>
+      <button style="margin-top:12px;width:100%" onclick="editAcct(null)">+ Add account</button></div>`;
+
+    const assets = D.accounts.filter(a => !isLiab(a)), debts = D.accounts.filter(isLiab);
+    const aTot = sum(assets, a => bal[a.name] || 0), dTot = -sum(debts, a => bal[a.name] || 0);
+    const nw = aTot - dTot;
+    const prevB = balances(addMonths(c, -1) + '-31');
+    const hasPrev = Object.keys(prevB).length > 0, change = nw - netWorth(prevB);
+
+    let h = `<div class="card"><div class="muted">Net worth</div>
+      <div class="big ${nw < 0 ? 'neg' : ''}">${money(nw)}</div>
+      ${hasPrev ? `<div class="muted">${change >= 0 ? '▲' : '▼'} ${money(Math.abs(change))} since the end of ${monthName(addMonths(c, -1))}</div>` : ''}
+      <div class="stats">
+        <div class="stat"><span class="muted">Assets</span><b>${money(aTot)}</b></div>
+        <div class="stat"><span class="muted">Debts</span><b class="${dTot > 0 ? 'neg' : ''}">${money(dTot)}</b></div>
+      </div></div>`;
+
+    // Asset accounts with goals nested under them
+    h += `<div class="card"><h2>Accounts<small>${money(aTot)}</small></h2>`;
+    assets.filter(a => a.status === 'Active').forEach(a => {
+      const v = bal[a.name] || 0;
+      const gs = D.goals.filter(g => goalAcct(g) === a.name && (g.status === 'Active' || Math.abs(goalBal(g.name)) > 0.005));
+      const set = sum(gs, g => goalBal(g.name));
+      h += `<div class="row" style="display:block">
+        <div class="split"><div><b>${esc(a.name)}</b><div class="muted">${esc(a.kind)}</div></div><b>${money(v)}</b></div>
+        ${gs.length ? `<div class="nest">${gs.map(g => `<div class="sub"><span>🎯 ${esc(g.name)}</span><span>${money(goalBal(g.name))}</span></div>`).join('')}
+          <div class="sub"><span>Unassigned</span><span class="${v - set < 0 ? 'neg' : ''}">${money(v - set)}</span></div></div>` : ''}
+        <div><button class="ghost" onclick="reconcile('${a.id}')">Update balance</button><button class="ghost" onclick="editAcct('${a.id}')">Edit</button></div>
+      </div>`;
+    });
+    h += `<button class="ghost" onclick="editAcct(null)">+ Add account</button></div>`;
+
+    // Credit cards & loans
+    const liveDebts = debts.filter(a => a.status === 'Active');
+    if (liveDebts.length) {
+      h += `<div class="card"><h2>Credit cards & loans<small>${money(dTot)} owed</small></h2>`;
+      liveDebts.forEach(a => {
+        const owed = -(bal[a.name] || 0);
+        let charged = 0, paid = 0;
+        D.tx.filter(t => t.date.slice(0, 7) === c && t.type !== 'Adjust').forEach(t => effects(t).forEach(([n, d]) => {
+          if (n !== a.name) return;
+          if (t.type === 'Transfer') { if (d > 0) paid += d; } else charged -= d;
+        }));
+        h += `<div class="row" style="display:block">
+          <div class="split"><div><b>${esc(a.name)}</b><div class="muted">This month: ${money(charged)} charged · ${money(paid)} paid</div></div>
+            <div style="text-align:right"><b class="${owed > 0.005 ? 'neg' : ''}">${money(owed)}</b><div class="muted">owed</div></div></div>
+          <div style="margin-top:6px">${owed > 0.005 ? `<button class="pill" onclick="payCard('${a.id}')">Pay</button>` : ''}
+            <button class="ghost" onclick="reconcile('${a.id}')">Update balance</button><button class="ghost" onclick="editAcct('${a.id}')">Edit</button></div>
+        </div>`;
+      });
+      h += '</div>';
+    }
+
+    const closed = D.accounts.filter(a => a.status === 'Closed');
+    if (closed.length) h += `<div class="card"><h2>Closed accounts</h2>${closed.map(a => `<div class="row">
+      <span>${esc(a.name)}</span><span>${money(bal[a.name] || 0)} <button class="ghost" onclick="editAcct('${a.id}')">Edit</button></span></div>`).join('')}</div>`;
+
+    // Past net worth (month-ends) + projected
+    const firstM = D.accounts.map(a => a.date.slice(0, 7)).sort()[0];
+    const past = [];
+    for (let m = firstM > addMonths(c, -6) ? firstM : addMonths(c, -6); m < c; m = addMonths(m, 1))
+      past.push({ m, v: netWorth(balances(m + '-31')), future: false });
+
+    const rows = [];
+    let proj = nw;
+    for (let i = 0; i < fcN; i++) {
+      const m = addMonths(c, i), p = project(m);
+      let delta;
+      if (i === 0) { const s = summarize(m); delta = (p.inc - s.inc) - (p.spend - s.spent); }
+      else delta = p.inc - p.spend;
+      const due = D.goals.filter(g => g.status === 'Active' && g.due === m);
+      const goalUse = sum(due, g => Math.max(0, goalStats(g).projected));
+      proj += delta - goalUse;
+      rows.push({ m, ...p, left: p.inc - p.spend - p.save, goalUse, nw: proj, due });
+    }
+
+    const bars = [...past, ...rows.map(r => ({ m: r.m, v: r.nw, future: true }))];
+    const maxAbs = Math.max(1, ...bars.map(b => Math.abs(b.v)));
+    h += `<div class="card"><h2>Net worth over time<small>solid = actual · faded = projected</small></h2>
+      <div class="bars">${bars.map(b => `
+        <div class="bar-col" title="${monthName(b.m)}: ${money(b.v)}">
+          <div class="bar-slot"><div class="bar-v ${b.v < 0 ? 'neg-bg' : ''} ${b.future ? 'future' : ''}" style="height:${Math.abs(b.v) / maxAbs * 100}%"></div></div>
+          <span>${shortMonth(b.m)}</span></div>`).join('')}</div>
+      <div class="seg" style="margin-top:12px">${[6, 12].map(n => `<button class="${fcN === n ? 'on' : ''}" onclick="fcN=${n};render()">Next ${n} months</button>`).join('')}</div>
+      <div class="muted" style="margin-top:10px">Projection: this month uses plan or actual, whichever is higher; later months use their budgets.
+        Goal money is assumed spent in the goal's target month.</div></div>`;
+
+    h += '<div class="card"><h2>Forecast<small>tap a month to edit its budget</small></h2>' + rows.map(r => `
+      <div class="row tap" style="display:block" onclick="M='${r.m}';go('budget')">
+        <div class="split"><b>${monthName(r.m)}${r.m === c ? ' · now' : ''}</b><span>${money(r.nw)}</span></div>
+        <div class="muted">In ${money(r.inc)} · Out ${money(r.spend)} · To goals ${money(r.save)} ·
+          <span class="${r.left < 0 ? 'neg' : 'pos'}">left ${money(r.left)}</span></div>
+        ${r.due.map(g => `<div class="muted">🎯 ${esc(g.name)} due — about ${money(Math.max(0, goalStats(g).projected))} to spend</div>`).join('')}
+      </div>`).join('') + '</div>';
+    return h;
+  }
+
+  function editAcct(id) {
+    const a = id ? D.accounts.find(x => x.id === id) : { name: '', kind: 'Checking', start: '', date: D.today, status: 'Active' };
+    $('dlg').innerHTML = `<h2>${id ? 'Edit account' : 'Add account'}</h2>
+      <input id="aName" placeholder="Name (e.g. Chase Visa)" value="${esc(a.name)}" ${id ? 'disabled' : ''}>
+      <select id="aKind">${ACCT_KINDS.map(k => `<option ${k === a.kind ? 'selected' : ''}>${k}</option>`).join('')}</select>
+      <div class="lbl">Balance at the start of this date — for cards and loans, enter the amount owed.
+        Transactions before this date won't affect this account.</div>
+      <input id="aStart" type="number" step="0.01" inputmode="decimal" placeholder="Starting balance" value="${esc(a.start)}">
+      <input id="aDate" type="date" value="${esc(a.date)}">
+      ${id ? `<label class="check"><input type="checkbox" id="aClosed" ${a.status === 'Closed' ? 'checked' : ''}> Account is closed (hide it from pickers)</label>` : ''}
+      <div class="actions"><button class="ghost" onclick="$('dlg').close()">Cancel</button><button onclick="saveAcct('${id || ''}')">Save</button></div>`;
+    $('dlg').showModal();
+  }
+  function saveAcct(id) {
+    const name = $('aName').value.trim();
+    if (!name) return alert('Give it a name');
+    const acc = { id: id || null, name, kind: $('aKind').value, start: Number($('aStart').value) || 0,
+                  date: $('aDate').value || D.today, status: $('aClosed') && $('aClosed').checked ? 'Closed' : 'Active' };
+    $('dlg').close();
+    sync('saveAccount', acc);
+  }
+
+  function reconcile(id) {
+    const a = D.accounts.find(x => x.id === id), v = balances()[a.name] || 0, liab = isLiab(a);
+    $('dlg').innerHTML = `<h2>Update ${esc(a.name)}</h2>
+      <div class="muted">The app thinks you ${liab ? 'owe' : 'have'} <b>${money(liab ? -v : v)}</b>.
+        Enter the real ${liab ? 'amount owed' : 'balance'} from your bank or card app.</div>
+      <input id="rAmt" type="number" step="0.01" inputmode="decimal" placeholder="${liab ? 'Amount owed' : 'Actual balance'}">
+      <div class="muted" style="margin-top:8px">The difference is saved as a balance update. It changes net worth, not your budget.</div>
+      <div class="actions"><button class="ghost" onclick="$('dlg').close()">Cancel</button><button onclick="saveRecon('${id}')">Save</button></div>`;
+    $('dlg').showModal();
+  }
+  function saveRecon(id) {
+    const a = D.accounts.find(x => x.id === id), raw = $('rAmt').value;
+    if (raw === '') return alert('Enter the balance');
+    const target = isLiab(a) ? -Number(raw) : Number(raw);
+    const diff = Math.round((target - (balances()[a.name] || 0)) * 100) / 100;
+    $('dlg').close();
+    if (!diff) return toast('Already matches — nothing to update');
+    addWithUndo({ type: 'Adjust', category: 'Balance update', direction: diff > 0 ? 'In' : 'Out',
+      amount: Math.abs(diff), date: D.today, note: '', account: a.name }, `${a.name} balance updated`);
+  }
+
+  function payCard(id) {
+    const a = D.accounts.find(x => x.id === id), owed = -(balances()[a.name] || 0);
+    editId = null; txType = 'Transfer';
+    drawTx(false, { to: a.name, amt: owed.toFixed(2), date: D.today });
+    $('dlg').showModal();
+  }
+
+  // ---------- page: history ----------
+  function historyPage() {
+    const c = cur();
+    const months = [...new Set([...D.budget.map(b => b.month), ...D.tx.map(t => t.date.slice(0, 7)), c])].filter(m => m <= c).sort().reverse();
+    const rows = months.map(m => ({ m, ...summarize(m) }));
+    const allLeft = sum(rows, r => r.left);
+    let h = `<div class="card"><div class="stats" style="margin-top:0">
+      <div class="stat"><span class="muted">All-time left over</span><b class="${allLeft < 0 ? 'neg' : 'pos'}">${money(allLeft)}</b></div>
+      <div class="stat"><span class="muted">Set aside in goals</span><b>${money(sum(D.goals, g => goalBal(g.name)))}</b></div>
+    </div><div class="muted" style="margin-top:8px">${months.length} months tracked · tap a month for details</div></div>`;
+    rows.forEach(r => {
+      const over = r.plannedSpend > 0 && r.spent > r.plannedSpend;
+      const pct = r.plannedSpend ? Math.min(100, Math.max(0, r.spent / r.plannedSpend * 100)) : 0;
+      h += `<div class="card tap" onclick="M='${r.m}';go('month')">
+        <h2>${monthName(r.m)}<small class="${r.left < 0 ? 'neg' : 'pos'}">left ${money(r.left)}</small></h2>
+        <div class="muted">In ${money(r.inc)} of ${money(r.plannedIn)} · Spent ${money(r.spent)} of ${money(r.plannedSpend)} · To goals ${money(r.saved)}</div>
+        <div class="track ${over ? 'over' : ''}"><div class="fill" style="width:${pct}%"></div></div></div>`;
+    });
+    return h;
+  }
+
+  // ---------- add / edit transaction dialog ----------
+  function openTx() { editId = null; txType = 'Flex'; txDir = 'Out'; drawTx(false); $('dlg').showModal(); }
+
+  function editTx(id) {
+    const t = D.tx.find(x => x.id === id);
+    if (!t) return;
+    editId = id;
+    if (t.type === 'Adjust') {
+      $('dlg').innerHTML = `<h2>Balance update</h2>
+        <div class="muted">${t.direction === 'In' ? '+' : '−'}${money(t.amount)} on ${esc(acctOf(t))} · ${t.date}</div>
+        <div class="muted" style="margin-top:8px">To change it, delete this and use "Update balance" again.</div>
+        <div class="actions"><button class="danger" onclick="delTx('${id}')">Delete</button><button class="ghost" onclick="$('dlg').close()">Close</button></div>`;
+      $('dlg').showModal();
+      return;
+    }
+    const p = { amt: String(t.amount), date: t.date, note: t.note, acct: t.account || acctOf(t), to: t.to, cat: t.category, name: '' };
+    if (t.type === 'Transfer') txType = 'Transfer';
+    else if (t.direction === 'Refund') { txType = 'Refund'; p.cat = t.type + '|' + t.category; }
+    else if (t.type === 'Unplanned') { txType = 'Unplanned'; txDir = t.direction === 'In' ? 'In' : 'Out'; p.name = t.category; }
+    else txType = t.type;
+    drawTx(false, p);
+    $('dlg').showModal();
+  }
+
+  function drawTx(keep, preset) {
+    const val = id => $(id) ? $(id).value : '';
+    const v = keep
+      ? { amt: val('tAmt'), date: val('tDate'), note: val('tNote'), name: val('tName'), acct: val('tAcct'), to: val('tTo'), cat: val('tCat') }
+      : Object.assign({ amt: '', date: defaultDate(), note: '', name: '', acct: '', to: '', cat: '' }, preset || {});
+    const plan = planFor(M).items;
+    const firstGoal = D.goals.find(g => g.status === 'Active') || D.goals[0];
+    let f = '';
+
+    // What it was
+    if (txType === 'Unplanned') {
+      f += `<div class="seg">
+          <button class="${txDir === 'Out' ? 'on' : ''}" onclick="txDir='Out';drawTx(true)">Cost</button>
+          <button class="${txDir === 'In' ? 'on' : ''}" onclick="txDir='In';drawTx(true)">Bonus</button></div>
+        <input id="tName" placeholder="What was it? (e.g. Vet bill)" value="${esc(v.name)}">`;
+    } else if (txType === 'Refund') {
+      const opts = plan.filter(p => p.type === 'Fixed' || p.type === 'Flex').map(p => ({ k: p.type + '|' + p.name, label: `${p.name} · ${p.type}` }));
+      if (v.cat && v.cat.includes('|') && !opts.some(o => o.k === v.cat)) {
+        const [ty, ...rest] = v.cat.split('|'); opts.unshift({ k: v.cat, label: `${rest.join('|')} · ${ty}` });
+      }
+      f += `<select id="tCat">${opts.map(o => `<option value="${esc(o.k)}" ${o.k === v.cat ? 'selected' : ''}>${esc(o.label)}</option>`).join('')
+        || '<option value="">Add categories on the Budget page first</option>'}</select>`;
+    } else if (txType !== 'Transfer') {
+      const isGoal = txType === 'Savings' || txType === 'GoalSpend';
+      const cats = txType === 'Savings' ? D.goals.filter(g => g.status === 'Active').map(g => g.name)
+                 : txType === 'GoalSpend' ? D.goals.map(g => g.name)
+                 : plan.filter(i => i.type === txType).map(i => i.name);
+      if (v.cat && !v.cat.includes('|') && !cats.includes(v.cat) && editId) cats.unshift(v.cat);
+      f += `<select id="tCat">${cats.map(c => `<option ${c === v.cat ? 'selected' : ''}>${esc(c)}</option>`).join('')
+        || `<option value="">${isGoal ? 'Create a goal on the Goals page first' : 'Add categories on the Budget page first'}</option>`}</select>`;
+    }
+
+    // Which account(s)
+    if (txType === 'Transfer') {
+      const from = v.acct || defAcct();
+      const to = v.to || (activeAccts().find(a => a.name !== from) || {}).name || '';
+      f += `<div class="lbl">From</div>${acctSelect('tAcct', from)}<div class="lbl">To (account or card being paid)</div>${acctSelect('tTo', to)}`;
+    } else if (txType !== 'Savings') {
+      const def = v.acct || (txType === 'GoalSpend' && firstGoal ? goalAcct(firstGoal)
+                : txType === 'Income' ? defAcct() : (lastAcct || defAcct()));
+      const label = (txType === 'Income' || (txType === 'Unplanned' && txDir === 'In')) ? 'Into'
+                  : txType === 'Refund' ? 'Refunded to' : 'Paid with';
+      f += `<div class="lbl">${label}</div>${acctSelect('tAcct', def)}`;
+    }
+
+    $('dlg').innerHTML = `<h2>${editId ? 'Edit' : 'Add'} transaction</h2>
+      <select id="tKind" onchange="txType=this.value;drawTx(true)">
+        ${TX_KINDS.map(([k, label]) => `<option value="${k}" ${k === txType ? 'selected' : ''}>${label}</option>`).join('')}
+      </select>
+      ${f}
+      <input id="tAmt" type="number" step="0.01" inputmode="decimal" placeholder="Amount" value="${esc(v.amt)}">
+      <input id="tDate" type="date" value="${esc(v.date)}">
+      <input id="tNote" placeholder="Note (optional)" value="${esc(v.note)}">
+      <div class="actions">
+        ${editId ? `<button class="danger" onclick="delTx('${editId}')">Delete</button>` : ''}
+        <button class="ghost" onclick="$('dlg').close()">Cancel</button><button onclick="saveTx()">Save</button>
+      </div>`;
+  }
+
+  function saveTx() {
+    const amount = Math.abs(parseFloat($('tAmt').value));
+    if (!amount) return alert('Enter an amount');
+    const base = { amount, date: $('tDate').value || defaultDate(), note: $('tNote').value.trim() };
+    let t;
+    if (txType === 'Transfer') {
+      const from = $('tAcct').value, to = $('tTo').value;
+      if (!from || !to || from === to) return alert('Pick two different accounts');
+      t = Object.assign(base, { type: 'Transfer', direction: 'Move', account: from, to,
+            category: isLiab(acctByName(to)) ? 'Payment' : 'Transfer' });
+    } else if (txType === 'Refund') {
+      const [type, ...rest] = $('tCat').value.split('|'), category = rest.join('|');
+      if (!category) return alert('Pick a category');
+      t = Object.assign(base, { type, category, direction: 'Refund', account: $('tAcct').value, to: '' });
+    } else {
+      const category = txType === 'Unplanned' ? $('tName').value.trim() : $('tCat').value;
+      if (!category) return alert('Pick or enter a category');
+      let direction = txType === 'Income' ? 'In' : txType === 'Unplanned' ? txDir : txType === 'GoalSpend' ? 'Pot' : 'Out';
+      if (editId && txType === 'Savings') {                 // keep "starting balance" entries as-is
+        const o = D.tx.find(x => x.id === editId);
+        if (o && o.type === 'Savings') direction = o.direction;
+      }
+      t = Object.assign(base, { type: txType, category, direction, account: $('tAcct') ? $('tAcct').value : '', to: '' });
+      if (!editId && SPEND_TYPES.includes(txType) && direction === 'Out') lastAcct = t.account;
+    }
+    $('dlg').close();
+    if (editId) updWithUndo(editId, t);
+    else addWithUndo(t, 'Transaction added');
+  }
+
+  // ---------- start ----------
+  call('init').then(d => { D = d; M = d.today.slice(0, 7); render(); }).catch(() => {});
+</script>
+</body>
+</html>
